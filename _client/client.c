@@ -60,24 +60,38 @@ int main() {
 
     // 사용자가 메시지 입력 및 서버로 전송
     while (1) {
+        printf("메시지 입력: ");
         fgets(message, BUFFER_SIZE, stdin);
         message[strcspn(message, "\n")] = 0; // 개행 문자 제거
-
+        fflush(stdin);
         // "/exit" 입력 시 종료
         if (strcmp(message, "/exit") == 0) {
             break;
         } else if(strcmp(message, "/upload") == 0){
             send(sock, message, strlen(message), 0); // 명령어 전송
-            char temp[5], buf[FILE_SIZE], filename[BUFFER_SIZE]; // 파일 경로를 저장할 변수
+            char buf[FILE_SIZE], path[BUFFER_SIZE], filename[BUFFER_SIZE]; // 파일 경로를 저장할 변수
             FILE* file;
 	        size_t fsize;
             int success; // 파일전송 성공 여부
+
             printf("업로드할 파일명 : ");
-			scanf("%s", filename);  //파일 이름 입력
-			fgets(temp, 5, stdin);  //버퍼에 남은 \n 제거
-			
-			file = fopen(filename, "rb");  //읽기 전용, 이진 모드로 파일 열기
-			
+			scanf("%s", path);  //파일 이름 입력
+			getchar();
+
+            char *lastSlash = strrchr(path, '/');
+    
+            if (lastSlash != NULL) {
+                // '/' 이후의 문자열을 복사
+                strcpy(filename, lastSlash + 1);
+                // printf("추출된 파일 이름: %s\n", filename);
+            } else {
+                // '/'가 없을 경우 전체 경로를 그대로 사용
+                strcpy(filename, path);
+                // printf("추출된 파일 이름: %s\n", filename);
+            }
+
+            file = fopen(path, "rb");  //읽기 전용, 이진 모드로 파일 열기\
+
 			int isnull =0;
 			if(file ==NULL){
 				isnull =1;

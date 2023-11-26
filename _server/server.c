@@ -115,9 +115,12 @@ void *handle_client(void *arg) {
 			
 			recv(sock, filename, BUFFER_SIZE, 0);  //파일 이름 수신
 			
-			file = fopen(filename, "wb");  //쓰기 전용, 이진모드로 파일 열기
+            char newFilename[BUFFER_SIZE + 6];  // "files/"를 추가하기 때문에 6을 더함
+            sprintf(newFilename, "files/%s", filename);
+            
+			file = fopen(newFilename, "wb");  //쓰기 전용, 이진모드로 파일 열기
 			recv(sock, &fsize, sizeof(fsize), 0);  //파일 크기 수신
-			
+
 			nbyte = FILE_SIZE;
 			while(nbyte >= FILE_SIZE){
 				nbyte = recv(sock, buf, FILE_SIZE, 0);  //256씩 수신
