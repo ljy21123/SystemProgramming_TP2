@@ -34,7 +34,7 @@ int main() {
     pthread_t thread;                               // 스레드 ID
     socklen_t client_addr_size;                     // 클라이언트 주소 크기
     char user_input[10];
-    int port = 1234;// 포트 번호
+    int port = 50001;// 포트 번호
 
     // 서버 소켓 생성
     server_sock = socket(AF_INET, SOCK_STREAM, 0);

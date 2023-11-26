@@ -28,7 +28,7 @@ int main() {
     pthread_t recv_thread;          // 수신 스레드
     char nickname[NICKNAME_LEN];    // 사용자 닉네임
     char message[BUFFER_SIZE];      // 메시지 입력 버퍼
-    int port = 1234;                // 포트번호
+    int port = 50001;                // 포트번호
 
     // 소켓 생성
     sock = socket(AF_INET, SOCK_STREAM, 0);
