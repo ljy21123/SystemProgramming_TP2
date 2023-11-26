@@ -4,7 +4,7 @@
 	작성자: 이준영, 양시현
 	수정이력:
 	- 2023-11-26: 초기버전 생성, 파일 전송 기능 추가, <arpa/inet.h> 헤더 추가
-    port 번호를 변수로 변경, FILE_SIZE 정의 추가
+    port 번호를 변수로 변경, FILE_SIZE 정의 추가, 닉네임 중복 처리 추가
 */
 
 #include <stdio.h>
@@ -48,12 +48,24 @@ int main() {
         return -1;
     }
 
-    // 닉네임 입력 및 서버로 전송
-    printf("닉네임을 입력하세요: ");
-    fgets(nickname, NICKNAME_LEN, stdin);
-    nickname[strcspn(nickname, "\n")] = 0;  // 개행 문자 제거
+    // 닉네임 중복이 존재하는지 확인하는 코드
+    while (1){
+        // 닉네임 입력 및 서버로 전송
+        printf("닉네임을 입력하세요: ");
 
-    send(sock, nickname, strlen(nickname), 0);  // 닉네임 서버로 전송
+        fgets(nickname, NICKNAME_LEN, stdin);
+        nickname[strcspn(nickname, "\n")] = 0;  // 개행 문자 제거
+        fflush(stdin);
+
+        send(sock, nickname, strlen(nickname), 0);  // 닉네임 서버로 전송
+
+        int isDuplicate = -1;
+        recv(sock, &isDuplicate, sizeof(int), 0);
+        if(isDuplicate == 0){
+            break;
+        }
+        printf("닉네임이 중복됩니다!\n");
+    }
 
     // 수신 스레드 생성
     pthread_create(&recv_thread, NULL, receive_message, (void *)&sock);

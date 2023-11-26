@@ -4,7 +4,7 @@
 	작성자: 이준영, 양시현
 	수정이력:
 	- 2023-11-26: 초기버전 생성, 파일 수신 기능 추가, port 번호를 변수로 변경, 
-    FILE_SIZE 정의 추가
+    FILE_SIZE 정의 추가, 닉네임 중복 처리 추가
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,13 +17,16 @@
 #define MAX_CLIENTS 10      // 최대 클라이언트 수 정의
 #define BUFFER_SIZE 1024    // 메시지 버퍼 크기 정의
 #define NICKNAME_LEN 32     // 닉네임 최대 길이 정의
-#define FILE_SIZE 256 // 파일 사이즈
+#define FILE_SIZE 256       // 파일 사이즈
 
 void *handle_client(void *arg);
 
-int clients[MAX_CLIENTS];   // 연결된 클라이언트 소켓 저장 배열
-int n_clients = 0;          // 현재 연결된 클라이언트 수
+char g_nickname[MAX_CLIENTS][NICKNAME_LEN] = {0};           // 현재 접속한 클라이언트의 닉네임을 저장할 배열
+int nickname_index = 0;                                     // 현재 닉네임 index
+int clients[MAX_CLIENTS];                                   // 연결된 클라이언트 소켓 저장 배열
+int n_clients = 0;                                          //  현재 연결된 클라이언트 수
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;  // 스레드 간 동기화를 위한 뮤텍스
+pthread_mutex_t nicknameMutex = PTHREAD_MUTEX_INITIALIZER;  // 닉네임 저장을 위한 동기화
 
 int main() {
     int server_sock, client_sock;                   // 서버 및 클라이언트 소켓
@@ -93,11 +96,38 @@ void *handle_client(void *arg) {
     int read_len;
 
     // 클라이언트로부터 닉네임 수신
-    if ((read_len = recv(sock, nickname, NICKNAME_LEN, 0)) > 0) {
-        nickname[read_len] = '\0';
-        printf("%s가 연결되었습니다.\n", nickname);
+    while(1){
+        if ((read_len = recv(sock, nickname, NICKNAME_LEN, 0)) > 0) {
+            nickname[read_len] = '\0';
+            // 뮤텍스를 이용한 닉네임 중복 확인 및 저장
+            pthread_mutex_lock(&nicknameMutex);
+            
+            int isDuplicate = 0;
+            // 중복 확인
+            for (int i = 0; i < nickname_index; i++) {
+                if (strcmp(g_nickname[i], nickname) == 0) {
+                    // 중복된 닉네임이 이미 존재
+                    pthread_mutex_unlock(&nicknameMutex);;
+                    isDuplicate = 1;
+                }
+            }
+            
+            // 중복이 존재한다면 1전송
+            if(isDuplicate){
+                send(sock, &isDuplicate, sizeof(int), 0);  //성공 여부 전송
+                pthread_mutex_unlock(&nicknameMutex);
+            }
+            else{
+                send(sock, &isDuplicate, sizeof(int), 0);  //성공 여부 전송
+                // 중복이 없으면 닉네임 저장
+                strcpy(g_nickname[nickname_index], nickname);
+                nickname_index++;
+                pthread_mutex_unlock(&nicknameMutex);
+                printf("%s가 연결되었습니다.\n", nickname);
+                break;
+            }
+        }
     }
-
     // 클라이언트로부터 메시지 수신
     while ((read_len = recv(sock, buffer, BUFFER_SIZE, 0)) > 0) {
         buffer[read_len] = '\0';
