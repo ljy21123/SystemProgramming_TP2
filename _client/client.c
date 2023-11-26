@@ -1,3 +1,12 @@
+/*
+	파일전송이 가능한 채팅 프로그램의 클라이언트 소스 코드입니다.
+	구현된 기능: 메시지 전송, 파일 전송
+	작성자: 이준영, 양시현
+	수정이력:
+	- 2023-11-26: 초기버전 생성, 파일 전송 기능 추가, <arpa/inet.h> 헤더 추가
+    port 번호를 변수로 변경, FILE_SIZE 정의 추가
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,7 +29,7 @@ int main() {
     char nickname[NICKNAME_LEN];    // 사용자 닉네임
     char message[BUFFER_SIZE];      // 메시지 입력 버퍼
     int port = 1234;                // 포트번호
-    
+
     // 소켓 생성
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
