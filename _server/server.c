@@ -21,6 +21,7 @@
 #define FILE_SIZE 256       // 파일 사이즈
 
 void *handle_client(void *arg);
+void exit_routine();
 
 char g_nickname[MAX_CLIENTS][NICKNAME_LEN] = {0};           // 현재 접속한 클라이언트의 닉네임을 저장할 배열
 int clients[MAX_CLIENTS];                                   // 연결된 클라이언트 소켓 저장 배열
@@ -50,6 +51,13 @@ int main() {
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     server_addr.sin_port = htons(port);
+
+    // 프로그램 종료 루틴 추가
+    if (atexit(exit_routine) != 0){
+        fprintf(stderr, "종료 루틴 등록 실패!\n");
+        exit(1);
+    }
+
 
     // 소켓에 주소 바인딩
     if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
@@ -173,6 +181,10 @@ void *handle_client(void *arg) {
 			fclose(file);		
         } else{
             printf("서버가 받은 채팅 [%s]: %s\n", nickname, buffer); // 서버가 받은 메시지 출력
+
+            // for(int i = 0; i< MAX_CLIENTS;i++){
+            //     send(clients[i],buffer, BUFFER_SIZE, 0);  //성공 여부 전송
+            // }
         }
         // printf("%s: %s\n", nickname, buffer);
     }
@@ -197,4 +209,11 @@ void *handle_client(void *arg) {
     printf("%s가 연결을 종료했습니다.\n", nickname);
 
     return NULL;
+}
+
+// 프로그램 종료 루틴
+void exit_routine() {
+    for (int i = 0; i < MAX_CLIENTS; i++){
+        close(clients[i]);
+    }
 }
