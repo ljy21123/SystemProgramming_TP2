@@ -5,6 +5,7 @@
 	수정이력:
 	- 2023-11-26: 초기버전 생성, 파일 전송 기능 추가, <arpa/inet.h> 헤더 추가
     port 번호를 변수로 변경, FILE_SIZE 정의 추가, 닉네임 중복 처리 추가
+    - 2023-11-27: 프로그램 종료 루틴 추가 
 */
 
 #include <stdio.h>
@@ -20,10 +21,12 @@
 #define NICKNAME_LEN 32     // 닉네임 최대 길이 정의
 #define FILE_SIZE 256 // 파일 사이즈
 
+int sock; // 클라이언트 소켓
+
 void *receive_message(void *socket);
+void exit_routine();
 
 int main() {
-    int sock;                       // 클라이언트 소켓
     struct sockaddr_in server_addr; // 서버 주소 구조체
     pthread_t recv_thread;          // 수신 스레드
     char nickname[NICKNAME_LEN];    // 사용자 닉네임
@@ -46,6 +49,12 @@ int main() {
     if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
         perror("connect");
         return -1;
+    }
+
+    // 프로그램 종료 루틴 추가
+    if (atexit(exit_routine) != 0){
+        fprintf(stderr, "종료 루틴 등록 실패!\n");
+        exit(1);
     }
 
     // 닉네임 중복이 존재하는지 확인하는 코드
@@ -158,4 +167,9 @@ void *receive_message(void *socket) {
     }
 
     return NULL;
+}
+
+// 프로그램 종료 루틴
+void exit_routine(){
+    close(sock);
 }

@@ -5,6 +5,7 @@
 	수정이력:
 	- 2023-11-26: 초기버전 생성, 파일 수신 기능 추가, port 번호를 변수로 변경, 
     FILE_SIZE 정의 추가, 닉네임 중복 처리 추가
+    - 2023-11-27: 닉네임 배열을 NULL로 초기화 하도록 수정, 클라이언트가 접속 해제할 때 닉네임을 지우도록 수정
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +23,6 @@
 void *handle_client(void *arg);
 
 char g_nickname[MAX_CLIENTS][NICKNAME_LEN] = {0};           // 현재 접속한 클라이언트의 닉네임을 저장할 배열
-int nickname_index = 0;                                     // 현재 닉네임 index
 int clients[MAX_CLIENTS];                                   // 연결된 클라이언트 소켓 저장 배열
 int n_clients = 0;                                          //  현재 연결된 클라이언트 수
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;  // 스레드 간 동기화를 위한 뮤텍스
@@ -35,6 +35,9 @@ int main() {
     socklen_t client_addr_size;                     // 클라이언트 주소 크기
     char user_input[10];
     int port = 50001;// 포트 번호
+
+    // 닉네임 배열 초기화
+    memset(g_nickname, 0, sizeof(g_nickname));
 
     // 서버 소켓 생성
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -94,6 +97,7 @@ void *handle_client(void *arg) {
     char nickname[NICKNAME_LEN] = {0};  // 닉네임 저장 배열
     char buffer[BUFFER_SIZE];
     int read_len;
+    int name_index = -1;
 
     // 클라이언트로부터 닉네임 수신
     while(1){
@@ -104,11 +108,12 @@ void *handle_client(void *arg) {
             
             int isDuplicate = 0;
             // 중복 확인
-            for (int i = 0; i < nickname_index; i++) {
+            for (int i = 0; i < MAX_CLIENTS; i++) {
                 if (strcmp(g_nickname[i], nickname) == 0) {
                     // 중복된 닉네임이 이미 존재
                     pthread_mutex_unlock(&nicknameMutex);;
                     isDuplicate = 1;
+                    break;
                 }
             }
             
@@ -118,16 +123,23 @@ void *handle_client(void *arg) {
                 pthread_mutex_unlock(&nicknameMutex);
             }
             else{
-                send(sock, &isDuplicate, sizeof(int), 0);  //성공 여부 전송
                 // 중복이 없으면 닉네임 저장
-                strcpy(g_nickname[nickname_index], nickname);
-                nickname_index++;
+                for(int i=0; i<MAX_CLIENTS; i++){
+                    if(g_nickname[i][0] == '\0'){
+                        name_index = i;
+                        break;
+                    }
+                }
+
+                strcpy(g_nickname[name_index], nickname);
                 pthread_mutex_unlock(&nicknameMutex);
                 printf("%s가 연결되었습니다.\n", nickname);
+                send(sock, &isDuplicate, sizeof(int), 0);  //성공 여부 전송
                 break;
             }
         }
     }
+
     // 클라이언트로부터 메시지 수신
     while ((read_len = recv(sock, buffer, BUFFER_SIZE, 0)) > 0) {
         buffer[read_len] = '\0';
@@ -164,7 +176,14 @@ void *handle_client(void *arg) {
         }
         // printf("%s: %s\n", nickname, buffer);
     }
-
+    
+    if (name_index != -1){
+        // 접속한 클라이언트의 닉네임 제거
+        pthread_mutex_lock(&nicknameMutex);
+        g_nickname[name_index][0] = '\0';
+        pthread_mutex_unlock(&nicknameMutex);
+    }
+    
     // 클라이언트와의 연결 종료 처리
     close(sock);
     pthread_mutex_lock(&clients_mutex);
