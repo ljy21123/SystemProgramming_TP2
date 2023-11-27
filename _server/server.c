@@ -37,6 +37,10 @@ int main() {
     char user_input[10];
     int port = 50001;// 포트 번호
 
+    for(int i=0; i<MAX_CLIENTS; i++){
+        clients[i] = -1;
+    }
+
     // 닉네임 배열 초기화
     memset(g_nickname, 0, sizeof(g_nickname));
 
@@ -181,10 +185,11 @@ void *handle_client(void *arg) {
 			fclose(file);		
         } else{
             printf("서버가 받은 채팅 [%s]: %s\n", nickname, buffer); // 서버가 받은 메시지 출력
-
-            // for(int i = 0; i< MAX_CLIENTS;i++){
-            //     send(clients[i],buffer, BUFFER_SIZE, 0);  //성공 여부 전송
-            // }
+            // send(sock,buffer, BUFFER_SIZE, 0);  //성공 여부 전송
+            for(int i = 0; i< MAX_CLIENTS;i++){
+                if(clients[i]!= -1)
+                    send(clients[i],buffer, BUFFER_SIZE, 0);  //성공 여부 전송
+            }
         }
         // printf("%s: %s\n", nickname, buffer);
     }
