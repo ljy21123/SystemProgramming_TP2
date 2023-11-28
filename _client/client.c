@@ -22,6 +22,9 @@
 #define NICKNAME_LEN 32     // 닉네임 최대 길이 정의
 #define FILE_SIZE 256 // 파일 사이즈
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+
 int sock; // 클라이언트 소켓
 
 void *receive_message(void *socket);
@@ -145,7 +148,46 @@ int main() {
 			
 			if (success) printf("업로드가 완료되었습니다.\n");
 			else printf("업로드를 실패했습니다.\n");	
-        }
+        } 
+        else if(strcmp(message, "/download") == 0){
+            send(sock, message, strlen(message), 0);          // 메시지 서버로 전송
+            int isnull = 0, success = 0, nbyte;
+            char filename[BUFFER_SIZE], buf[FILE_SIZE];
+            FILE* file;
+            size_t fsize;
+
+            printf("전송할 파일이름: ");
+            scanf("%s",filename);
+
+            send(sock, filename, BUFFER_SIZE, 0); // 파일명 전송
+
+			recv(sock, &isnull, sizeof(isnull), 0); // 명령어를 전달받은 후 의 처리
+			if(isnull ==1){
+                printf("파일이 존재하지 않습니다.\n");
+				continue;
+			}
+
+            char newFilename[BUFFER_SIZE + 6];  // "files/"를 추가하기 때문에 6을 더함
+            sprintf(newFilename, "files/%s", filename)
+            ;
+			file = fopen(newFilename, "wb");  //쓰기 전용, 이진모드로 파일 열기
+			recv(sock, &fsize, sizeof(fsize), 0);  //파일 크기 수신
+
+			nbyte = FILE_SIZE;
+			while(nbyte >= FILE_SIZE){
+				nbyte = recv(sock, buf, FILE_SIZE, 0);  //256씩 수신
+				success = fwrite(buf, sizeof(char), nbyte, file);  //파일 쓰기
+				if(nbyte < FILE_SIZE) success =1;
+			}
+			send(sock, &success, sizeof(int), 0);  //성공 여부 전송
+			fclose(file);		
+
+            if (success) printf("다운로드가 완료되었습니다.\n");
+			else printf("다운로드에 실패했습니다.\n");
+            pthread_mutex_lock(&mutex);
+            pthread_cond_signal(&condition);
+            pthread_mutex_unlock(&mutex);
+        }   
         else{
             send(sock, message, strlen(message), 0);          // 메시지 서버로 전송
         }
@@ -163,7 +205,14 @@ void *receive_message(void *socket) {
     // 서버로부터 메시지를 계속 수신
     while ((length = recv(sock, message, BUFFER_SIZE * 2, 0)) > 0) {
         message[length] = '\0';
-        printf("%s\n", message);    // 수신된 메시지 출력
+        if(strcmp(message, "/Q") == 0){
+            pthread_mutex_lock(&mutex);
+            pthread_cond_wait(&condition, &mutex);
+            pthread_mutex_unlock(&mutex);
+        }  
+        else{
+            printf("%s\n", message);    // 수신된 메시지 출력
+        }
     }
 
     return NULL;
