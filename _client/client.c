@@ -6,6 +6,7 @@
 	- 2023-11-26: 초기버전 생성, 파일 전송 기능 추가, <arpa/inet.h> 헤더 추가
     port 번호를 변수로 변경, FILE_SIZE 정의 추가, 닉네임 중복 처리 추가
     - 2023-11-27: 프로그램 종료 루틴 추가 
+    - 2023-11-28: ip 변수로 수정
 */
 
 #include <stdio.h>
@@ -31,6 +32,7 @@ int main() {
     pthread_t recv_thread;          // 수신 스레드
     char nickname[NICKNAME_LEN];    // 사용자 닉네임
     char message[BUFFER_SIZE];      // 메시지 입력 버퍼
+    char ip[100] = "127.0.0.1\0";
     int port = 50001;                // 포트번호
 
     // 소켓 생성
@@ -42,7 +44,7 @@ int main() {
 
     // 서버 주소 설정
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");   // 서버의 IP 주소
+    server_addr.sin_addr.s_addr = inet_addr(ip);   // 서버의 IP 주소
     server_addr.sin_port = htons(port);                     // 서버의 포트 번호
 
     // 서버에 연결
@@ -81,7 +83,6 @@ int main() {
 
     // 사용자가 메시지 입력 및 서버로 전송
     while (1) {
-        printf("메시지 입력: ");
         fgets(message, BUFFER_SIZE, stdin);
         message[strcspn(message, "\n")] = 0; // 개행 문자 제거
         fflush(stdin);
@@ -146,7 +147,6 @@ int main() {
 			else printf("업로드를 실패했습니다.\n");	
         }
         else{
-            printf("클라이언트가 보낸 채팅: %s\n", message);    // 사용자가 보낸 메시지 출력
             send(sock, message, strlen(message), 0);          // 메시지 서버로 전송
         }
     }
@@ -161,7 +161,7 @@ void *receive_message(void *socket) {
     int length;
 
     // 서버로부터 메시지를 계속 수신
-    while ((length = recv(sock, message, BUFFER_SIZE, 0)) > 0) {
+    while ((length = recv(sock, message, BUFFER_SIZE * 2, 0)) > 0) {
         message[length] = '\0';
         printf("%s\n", message);    // 수신된 메시지 출력
     }

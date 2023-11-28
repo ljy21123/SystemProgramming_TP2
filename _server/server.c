@@ -6,6 +6,7 @@
 	- 2023-11-26: 초기버전 생성, 파일 수신 기능 추가, port 번호를 변수로 변경, 
     FILE_SIZE 정의 추가, 닉네임 중복 처리 추가
     - 2023-11-27: 닉네임 배열을 NULL로 초기화 하도록 수정, 클라이언트가 접속 해제할 때 닉네임을 지우도록 수정
+    - 2023-11-28: 브로드캐스트할때 뮤텍스로 잠금 추가, 서버 소켓 전역변수로 변경, 종료시 서버 소켓 닫도록 수정
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,7 @@
 #define NICKNAME_LEN 32     // 닉네임 최대 길이 정의
 #define FILE_SIZE 256       // 파일 사이즈
 
+void* broadcastThread(void* arg);       // 메시지 방송용
 void *handle_client(void *arg);
 void exit_routine();
 
@@ -28,9 +30,10 @@ int clients[MAX_CLIENTS];                                   // 연결된 클라�
 int n_clients = 0;                                          //  현재 연결된 클라이언트 수
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;  // 스레드 간 동기화를 위한 뮤텍스
 pthread_mutex_t nicknameMutex = PTHREAD_MUTEX_INITIALIZER;  // 닉네임 저장을 위한 동기화
+int server_sock;                                            // 서버 소켓
 
 int main() {
-    int server_sock, client_sock;                   // 서버 및 클라이언트 소켓
+    int client_sock;                   // 클라이언트 소켓
     struct sockaddr_in server_addr, client_addr;    // 소켓 주소 구조체
     pthread_t thread;                               // 스레드 ID
     socklen_t client_addr_size;                     // 클라이언트 주소 크기
@@ -110,6 +113,7 @@ void *handle_client(void *arg) {
     char buffer[BUFFER_SIZE];
     int read_len;
     int name_index = -1;
+    pthread_t broadcastThreadID; // 메시지 방송용 쓰레드
 
     // 클라이언트로부터 닉네임 수신
     while(1){
@@ -184,14 +188,12 @@ void *handle_client(void *arg) {
 			send(sock, &success, sizeof(int), 0);  //성공 여부 전송
 			fclose(file);		
         } else{
+            // 접속한 클라이언트들에게 메시지 방송
             printf("서버가 받은 채팅 [%s]: %s\n", nickname, buffer); // 서버가 받은 메시지 출력
-            // send(sock,buffer, BUFFER_SIZE, 0);  //성공 여부 전송
-            for(int i = 0; i< MAX_CLIENTS;i++){
-                if(clients[i]!= -1)
-                    send(clients[i],buffer, BUFFER_SIZE, 0);  //성공 여부 전송
-            }
+            char full_message[2 * BUFFER_SIZE];
+            snprintf(full_message, sizeof(full_message), "%s: %s", nickname, buffer);
+            pthread_create(&broadcastThreadID, NULL, broadcastThread, (void*)full_message);
         }
-        // printf("%s: %s\n", nickname, buffer);
     }
     
     if (name_index != -1){
@@ -201,8 +203,7 @@ void *handle_client(void *arg) {
         pthread_mutex_unlock(&nicknameMutex);
     }
     
-    // 클라이언트와의 연결 종료 처리
-    close(sock);
+    // 클라이언트와의 연결 종료 처리z
     pthread_mutex_lock(&clients_mutex);
     for (int i = 0; i < n_clients; i++) {
         if (clients[i] == sock) {
@@ -216,9 +217,23 @@ void *handle_client(void *arg) {
     return NULL;
 }
 
+void* broadcastThread(void* arg) {
+    char* message = (char*)arg;
+    pthread_mutex_lock(&clients_mutex);
+    for(int i = 0; i< MAX_CLIENTS;i++){
+        if(clients[i]!= -1)
+            send(clients[i],message, (BUFFER_SIZE * 2), 0); 
+    }
+    pthread_mutex_unlock(&clients_mutex);
+    return NULL;
+}
+
 // 프로그램 종료 루틴
 void exit_routine() {
     for (int i = 0; i < MAX_CLIENTS; i++){
-        close(clients[i]);
+        if (clients[i] != -1){
+            close(clients[i]);
+        }
     }
+    close(server_sock);
 }
