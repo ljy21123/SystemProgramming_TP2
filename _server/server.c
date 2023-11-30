@@ -21,12 +21,12 @@
 #define NICKNAME_LEN 32     // 닉네임 최대 길이 정의
 #define FILE_SIZE 256       // 파일 사이즈
 
-void* broadcastThread(void* arg);       // 메시지 방송용
 void *handle_client(void *arg);
 void exit_routine();
 
 char g_nickname[MAX_CLIENTS][NICKNAME_LEN] = {0};           // 현재 접속한 클라이언트의 닉네임을 저장할 배열
 int clients[MAX_CLIENTS];                                   // 연결된 클라이언트 소켓 저장 배열
+int room[MAX_CLIENTS];
 int n_clients = 0;                                          //  현재 연결된 클라이언트 수
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;  // 스레드 간 동기화를 위한 뮤텍스
 pthread_mutex_t nicknameMutex = PTHREAD_MUTEX_INITIALIZER;  // 닉네임 저장을 위한 동기화
@@ -114,6 +114,21 @@ void *handle_client(void *arg) {
     int read_len;
     int name_index = -1;
     pthread_t broadcastThreadID; // 메시지 방송용 쓰레드
+    int room_no;
+    int client_index; // 배열에서의 인덱스 위치
+    
+    // 방번호
+    recv(sock, &room_no, sizeof(room_no), 0);
+
+    pthread_mutex_unlock(&clients_mutex);   // 뮤텍스 잠금 해제
+    for(int i=0; i<MAX_CLIENTS; i++){
+        if(clients[i] == sock){
+            room[i] = room_no;
+            client_index = i;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&clients_mutex);   // 뮤텍스 잠금 해제
 
     // 클라이언트로부터 닉네임 수신
     while(1){
@@ -121,7 +136,6 @@ void *handle_client(void *arg) {
             nickname[read_len] = '\0';
             // 뮤텍스를 이용한 닉네임 중복 확인 및 저장
             pthread_mutex_lock(&nicknameMutex);
-            
             int isDuplicate = 0;
             // 중복 확인
             for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -240,7 +254,14 @@ void *handle_client(void *arg) {
             printf("서버가 받은 채팅 [%s]: %s\n", nickname, buffer); // 서버가 받은 메시지 출력
             char full_message[2 * BUFFER_SIZE];
             snprintf(full_message, sizeof(full_message), "%s: %s", nickname, buffer);
-            pthread_create(&broadcastThreadID, NULL, broadcastThread, (void*)full_message);
+
+            // 메시지 방송부
+            pthread_mutex_lock(&clients_mutex);
+            for(int i = 0; i< MAX_CLIENTS;i++){
+                if(clients[i]!= -1 && room[i] == room_no)
+                    send(clients[i], full_message, (BUFFER_SIZE * 2), 0); 
+            }
+            pthread_mutex_unlock(&clients_mutex);
         }
     }
     
@@ -262,17 +283,6 @@ void *handle_client(void *arg) {
     pthread_mutex_unlock(&clients_mutex);
     printf("%s가 연결을 종료했습니다.\n", nickname);
 
-    return NULL;
-}
-
-void* broadcastThread(void* arg) {
-    char* message = (char*)arg;
-    pthread_mutex_lock(&clients_mutex);
-    for(int i = 0; i< MAX_CLIENTS;i++){
-        if(clients[i]!= -1)
-            send(clients[i],message, (BUFFER_SIZE * 2), 0); 
-    }
-    pthread_mutex_unlock(&clients_mutex);
     return NULL;
 }
 

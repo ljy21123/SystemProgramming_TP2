@@ -62,6 +62,25 @@ int main() {
         exit(1);
     }
 
+    // 방번호 입력부
+    char input[50];
+    int room_no;
+
+    printf("방번호를 입력하세요: ");
+    if (fgets(input, sizeof(input), stdin) != NULL) {
+        // 입력된 문자열에서 정수 추출
+        room_no = strtol(input, NULL, 10);
+        printf("입력 번호 %d\n",room_no);
+    } else {
+        // 오류 처리
+        printf("입력 오류!\n");
+    }
+    
+    if (send(sock, &room_no, sizeof(int), 0) < 0) {
+        perror("send failed");
+        // 오류 처리
+    }
+
     // 닉네임 중복이 존재하는지 확인하는 코드
     while (1){
         // 닉네임 입력 및 서버로 전송
