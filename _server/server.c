@@ -88,13 +88,15 @@ int main() {
             perror("accept");
             continue;
         }
-
+        printf("생성된 FD: %d\n",client_sock);
         // 클라이언트 관리를 위한 뮤텍스 잠금
         pthread_mutex_lock(&clients_mutex);
         if (n_clients < MAX_CLIENTS) {
             for(int i=0;i<MAX_CLIENTS;i++){
                 if(clients[i] == -1){
+                    printf("FD여기에 저장: %d\n",i);
                     clients[i] = client_sock;   
+                    break;
                 }
             }
             n_clients++;
@@ -126,15 +128,17 @@ void *handle_client(void *arg) {
     recv(sock, &room_no, sizeof(room_no), 0);
 
     pthread_mutex_unlock(&clients_mutex);   // 뮤텍스 잠금 해제
+    printf("작동함\n");
     for(int i=0; i<MAX_CLIENTS; i++){
+        printf("작동함2\n");
         if(clients[i] == sock){
             room[i] = room_no;
             client_index = i;
+            printf("전송된 방번호%d를 %d인덱스에 저장, 결과:%d\n", room_no, i, room[i]);
             break;
         }
     }
     pthread_mutex_unlock(&clients_mutex);   // 뮤텍스 잠금 해제
-
     // 클라이언트로부터 닉네임 수신
     while(1){
         if ((read_len = recv(sock, nickname, NICKNAME_LEN, 0)) > 0) {
@@ -221,8 +225,9 @@ void *handle_client(void *arg) {
 
                 pthread_mutex_lock(&clients_mutex);
                 for(int i = 0; i< MAX_CLIENTS;i++){
-                    if(clients[i]!= -1 && room[i] == room_no)
-                        send(clients[i], full_message, (BUFFER_SIZE * 2), 0); 
+                    if(clients[i]!= -1 && room[i] == room_no){
+                        send(clients[i], full_message, (BUFFER_SIZE * 2), 0);
+                    }    
                 }
                 pthread_mutex_unlock(&clients_mutex);
             }
@@ -288,8 +293,10 @@ void *handle_client(void *arg) {
             // 메시지 방송부
             pthread_mutex_lock(&clients_mutex);
             for(int i = 0; i< MAX_CLIENTS;i++){
-                if(clients[i]!= -1 && room[i] == room_no)
-                    send(clients[i], full_message, (BUFFER_SIZE * 2), 0); 
+                printf("%d\n",room[i]);
+                if(clients[i]!= -1 && room[i] == room_no){
+                    send(clients[i], full_message, (BUFFER_SIZE * 2), 0);                     
+                }
             }
             pthread_mutex_unlock(&clients_mutex);
         }
