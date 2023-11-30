@@ -201,8 +201,21 @@ void *handle_client(void *arg) {
 			}
 			send(sock, &success, sizeof(int), 0);  //성공 여부 전송
 			fclose(file);		
-            if (success) printf("다운로드가 완료되었습니다.\n");
-			else printf("다운로드에 실패했습니다.\n");	
+            if (success){ 
+                printf("다운로드가 완료되었습니다.\n");
+                char full_message[2 * BUFFER_SIZE];
+                snprintf(full_message, sizeof(full_message), "%s: %s파일을 전송하였습니다.", nickname, filename);
+
+                pthread_mutex_lock(&clients_mutex);
+                for(int i = 0; i< MAX_CLIENTS;i++){
+                    if(clients[i]!= -1 && room[i] == room_no)
+                        send(clients[i], full_message, (BUFFER_SIZE * 2), 0); 
+                }
+                pthread_mutex_unlock(&clients_mutex);
+            }
+			else{ 
+                printf("다운로드에 실패했습니다.\n");	
+            }
         } 
         else if(strcmp(buffer, "/download") == 0){ 
             char a[BUFFER_SIZE*2] = "/Q";
@@ -246,8 +259,12 @@ void *handle_client(void *arg) {
 			fclose(file);
 			recv(sock, &success, sizeof(int), 0);  //업로드 성공 여부 수신
 			
-			if (success) printf("업로드가 완료되었습니다.\n");
-			else printf("업로드를 실패했습니다.\n");	
+			if (success){
+                printf("업로드가 완료되었습니다.\n");
+            } 
+			else{ 
+                printf("업로드를 실패했습니다.\n");	
+            }
         }
         else{
             // 접속한 클라이언트들에게 메시지 방송
