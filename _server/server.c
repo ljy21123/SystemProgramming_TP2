@@ -315,7 +315,6 @@ void *handle_client(void *arg) {
             // 메시지 방송부
             pthread_mutex_lock(&clients_mutex);
             for(int i = 0; i< MAX_CLIENTS;i++){
-                printf("%d\n",room[i]);
                 if(clients[i]!= -1 && room[i] == room_no){
                     send(clients[i], full_message, (BUFFER_SIZE * 2), 0);                     
                 }
@@ -330,14 +329,22 @@ void *handle_client(void *arg) {
         g_nickname[name_index][0] = '\0';
         pthread_mutex_unlock(&nicknameMutex);
     }
-    
-    // 클라이언트와의 연결 종료 처리z
+
+    char full_message[BUFFER_SIZE * 2];
+    snprintf(full_message, sizeof(full_message), "server: %s님이 퇴장하셨습니다.", nickname);
+
+    // 클라이언트와의 연결 종료 처리
     pthread_mutex_lock(&clients_mutex);
     clients[client_index] = -1;
     n_clients--;
+    for(int i = 0; i< MAX_CLIENTS;i++){
+        if(clients[i]!= -1 && room[i] == room_no){
+            send(clients[i], full_message, (BUFFER_SIZE * 2), 0);                     
+        }
+    }
     pthread_mutex_unlock(&clients_mutex);
     printf("%s가 연결을 종료했습니다.\n", nickname);
-
+    
     return NULL;
 }
 
