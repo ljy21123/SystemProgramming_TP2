@@ -224,7 +224,7 @@ void *receive_message(void *socket) {
             pthread_mutex_unlock(&mutex);
         }  
         else{
-            printf("%s\n", message);    // 수신된 메시지 출력
+            // printf("%s\n", message);    // 수신된 메시지 출력
             append_text_to_textview(GTK_TEXT_VIEW(text_view), message);
         }
     }
@@ -261,17 +261,17 @@ void connect_button_clicked(GtkWidget *widget, gpointer data) {
     }
         
     // 여기에 연결하는 동작을 추가할 수 있습니다
-    g_print("연결 버튼이 클릭되었습니다!\n");
+    // g_print("연결 버튼이 클릭되었습니다!\n");
     
     /* 서버 연결부 */
     strcpy(ip, ip_text);
-    g_print("입력된 IP: %s\n", ip);
+    // g_print("입력된 IP: %s\n", ip);
 
     // 텍스트를 정수로 변환하여 port 변수에 저장
-    port = atoi(port_text);
+    // port = atoi(port_text);
 
     // port 변수에 저장된 값을 출력
-    g_print("입력된 Port: %d\n", port);
+    // g_print("입력된 Port: %d\n", port);
 
      // 소켓 생성
     sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -308,7 +308,7 @@ void connect_button_clicked(GtkWidget *widget, gpointer data) {
 
     /* 방번호, 닉네임 설정부 */
     room_no = atoi(room_no_text);
-    g_print("입력된 방번호: %d\n", room_no);
+    // g_print("입력된 방번호: %d\n", room_no);
     if (send(sock, &room_no, sizeof(int), 0) < 0) {
         show_warning_dialog(GTK_WIDGET(window), "방번호 전송에 실패하였습니다.");
         perror("send failed");
@@ -353,7 +353,7 @@ void on_file_selected(GtkFileChooserButton *filechooserbutton, gpointer user_dat
     const gchar *select_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(filechooserbutton));
     
     strcpy(path, select_filename);
-    g_print("선택된 파일: %s\n%s\n", select_filename, path);
+    // g_print("선택된 파일: %s\n%s\n", select_filename, path);
 
     send(sock, message, strlen(message), 0); // 명령어 전송
 
@@ -434,7 +434,12 @@ void download_button_clicked(GtkWidget *widget, gpointer data) {
     if (result == GTK_RESPONSE_ACCEPT) {
         select_file = gtk_entry_get_text(GTK_ENTRY(entry));
         strcpy(filename, select_file);
-        g_print("입력된 파일: %s\n%s\n", select_file,filename);
+        // g_print("입력된 파일: %s\n%s\n", select_file,filename);
+    }
+    else if (result == GTK_RESPONSE_CANCEL) {
+        // 취소 버튼이 눌렸을 때의 처리
+        gtk_widget_destroy(dialog);  // 다이얼로그 파괴
+        return;  // 함수 종료
     }
     char message[BUFFER_SIZE] = "/download";
     send(sock, message, strlen(message), 0);          // 메시지 서버 다운로드 요청
@@ -531,7 +536,7 @@ void show_nickname_dialog(GtkWidget *parent) {
     gint result = gtk_dialog_run(GTK_DIALOG(dialog));
     if (result == GTK_RESPONSE_ACCEPT) {
         name = gtk_entry_get_text(GTK_ENTRY(entry));
-        g_print("입력된 닉네임: %s\n", name);
+        // g_print("입력된 닉네임: %s\n", name);
         strcpy(nickname, name);
     }
 

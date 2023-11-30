@@ -88,13 +88,11 @@ int main() {
             perror("accept");
             continue;
         }
-        printf("생성된 FD: %d\n",client_sock);
         // 클라이언트 관리를 위한 뮤텍스 잠금
         pthread_mutex_lock(&clients_mutex);
         if (n_clients < MAX_CLIENTS) {
             for(int i=0;i<MAX_CLIENTS;i++){
                 if(clients[i] == -1){
-                    printf("FD여기에 저장: %d\n",i);
                     clients[i] = client_sock;   
                     break;
                 }
@@ -128,13 +126,10 @@ void *handle_client(void *arg) {
     recv(sock, &room_no, sizeof(room_no), 0);
 
     pthread_mutex_unlock(&clients_mutex);   // 뮤텍스 잠금 해제
-    printf("작동함\n");
     for(int i=0; i<MAX_CLIENTS; i++){
-        printf("작동함2\n");
         if(clients[i] == sock){
             room[i] = room_no;
             client_index = i;
-            printf("전송된 방번호%d를 %d인덱스에 저장, 결과:%d\n", room_no, i, room[i]);
             break;
         }
     }
@@ -203,10 +198,37 @@ void *handle_client(void *arg) {
 			}
 			
 			recv(sock, filename, BUFFER_SIZE, 0);  //파일 이름 수신
-			
-            char newFilename[BUFFER_SIZE + 6];  // "files/"를 추가하기 때문에 6을 더함
-            sprintf(newFilename, "files/%s", filename);
-            
+			char *name = strtok(filename, ".");
+            char *extension = strtok(NULL, ".");
+
+            printf("%s %s %s\n", name, extension, filename);
+            char newFilename[BUFFER_SIZE + 60];  // "files/"를 추가하기 때문에 6을 더함
+            sprintf(newFilename, "files/%s.%s", name, extension);
+            char resultFilename[BUFFER_SIZE + 60];
+            int file_no = 1;
+            while(1){
+                char no[10];
+                sprintf(no, "%d", file_no);
+                if (access(newFilename, F_OK) != -1) {
+                    printf("1\n");
+                    // printf("파일이 존재합니다.\n");
+                    sprintf(newFilename, "files/%s(%s).%s", name, no, extension);
+                } else {
+                    // printf("파일이 존재하지 않습니다.\n");
+                    if(file_no != 1){
+                        printf("2\n");
+                        sprintf(no, "%d", --file_no);
+                        sprintf(resultFilename, "%s(%s).%s", name, no, extension);
+                    }else{
+                        printf("3\n");
+                        sprintf(resultFilename, "%s.%s", name, extension);
+                        sprintf(newFilename, "files/%s.%s", name, extension);
+                    }
+                    break;
+                }
+                file_no++;
+            }
+
 			file = fopen(newFilename, "wb");  //쓰기 전용, 이진모드로 파일 열기
 			recv(sock, &fsize, sizeof(fsize), 0);  //파일 크기 수신
 
@@ -221,7 +243,7 @@ void *handle_client(void *arg) {
             if (success){ 
                 printf("다운로드가 완료되었습니다.\n");
                 char full_message[2 * BUFFER_SIZE];
-                snprintf(full_message, sizeof(full_message), "server: %s님이 %s파일을 전송하였습니다.", nickname, filename);
+                snprintf(full_message, sizeof(full_message), "server: %s님이 %s파일을 전송하였습니다.", nickname, resultFilename);
 
                 pthread_mutex_lock(&clients_mutex);
                 for(int i = 0; i< MAX_CLIENTS;i++){
