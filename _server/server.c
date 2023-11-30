@@ -92,7 +92,12 @@ int main() {
         // 클라이언트 관리를 위한 뮤텍스 잠금
         pthread_mutex_lock(&clients_mutex);
         if (n_clients < MAX_CLIENTS) {
-            clients[n_clients++] = client_sock;
+            for(int i=0;i<MAX_CLIENTS;i++){
+                if(clients[i] == -1){
+                    clients[i] = client_sock;   
+                }
+            }
+            n_clients++;
             // 각 클라이언트에 대한 스레드 생성 및 실행
             pthread_create(&thread, NULL, handle_client, (void *)&client_sock);
             pthread_detach(thread); // 스레드 분리 (스레드 종료 시 자동 정리)
@@ -165,6 +170,14 @@ void *handle_client(void *arg) {
                 pthread_mutex_unlock(&nicknameMutex);
                 printf("%s가 연결되었습니다.\n", nickname);
                 send(sock, &isDuplicate, sizeof(int), 0);  //성공 여부 전송
+                char full_message[2 * BUFFER_SIZE];
+                snprintf(full_message, sizeof(full_message), "server: %s님이 접속하였습니다.", nickname);
+                pthread_mutex_lock(&clients_mutex);
+                for(int i = 0; i< MAX_CLIENTS;i++){
+                    if(clients[i]!= -1 && room[i] == room_no)
+                        send(clients[i], full_message, (BUFFER_SIZE * 2), 0); 
+                }
+                pthread_mutex_unlock(&clients_mutex);
                 break;
             }
         }
@@ -204,7 +217,7 @@ void *handle_client(void *arg) {
             if (success){ 
                 printf("다운로드가 완료되었습니다.\n");
                 char full_message[2 * BUFFER_SIZE];
-                snprintf(full_message, sizeof(full_message), "%s: %s파일을 전송하였습니다.", nickname, filename);
+                snprintf(full_message, sizeof(full_message), "server: %s님이 %s파일을 전송하였습니다.", nickname, filename);
 
                 pthread_mutex_lock(&clients_mutex);
                 for(int i = 0; i< MAX_CLIENTS;i++){
@@ -291,12 +304,8 @@ void *handle_client(void *arg) {
     
     // 클라이언트와의 연결 종료 처리z
     pthread_mutex_lock(&clients_mutex);
-    for (int i = 0; i < n_clients; i++) {
-        if (clients[i] == sock) {
-            clients[i] = 0;
-            break;
-        }
-    }
+    clients[client_index] = -1;
+    n_clients--;
     pthread_mutex_unlock(&clients_mutex);
     printf("%s가 연결을 종료했습니다.\n", nickname);
 
