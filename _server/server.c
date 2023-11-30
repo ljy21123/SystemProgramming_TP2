@@ -209,22 +209,40 @@ void *handle_client(void *arg) {
             while(1){
                 char no[10];
                 sprintf(no, "%d", file_no);
-                if (access(newFilename, F_OK) != -1) {
-                    printf("1\n");
-                    // printf("파일이 존재합니다.\n");
-                    sprintf(newFilename, "files/%s(%s).%s", name, no, extension);
-                } else {
-                    // printf("파일이 존재하지 않습니다.\n");
-                    if(file_no != 1){
-                        printf("2\n");
-                        sprintf(no, "%d", --file_no);
-                        sprintf(resultFilename, "%s(%s).%s", name, no, extension);
-                    }else{
-                        printf("3\n");
-                        sprintf(resultFilename, "%s.%s", name, extension);
-                        sprintf(newFilename, "files/%s.%s", name, extension);
+                if(extension == NULL){
+                    if (access(newFilename, F_OK) != -1) {
+                        printf("1\n");
+                        // printf("파일이 존재합니다.\n");
+                        sprintf(newFilename, "files/%s(%s)", name, no);
+                    } else {
+                        // printf("파일이 존재하지 않습니다.\n");
+                        if(file_no != 1){
+                            printf("2\n");
+                            sprintf(no, "%d", --file_no);
+                            sprintf(resultFilename, "%s(%s)", name, no);
+                        }else{
+                            printf("3\n");
+                            sprintf(resultFilename, "%s", name);
+                            sprintf(newFilename, "files/%s", name);
+                        }
+                        break;
                     }
-                    break;
+                }
+                else{
+                    if (access(newFilename, F_OK) != -1) {
+                        // printf("파일이 존재합니다.\n");
+                        sprintf(newFilename, "files/%s(%s).%s", name, no, extension);
+                    } else {
+                        // printf("파일이 존재하지 않습니다.\n");
+                        if(file_no != 1){
+                            sprintf(no, "%d", --file_no);
+                            sprintf(resultFilename, "%s(%s).%s", name, no, extension);
+                        }else{
+                            sprintf(resultFilename, "%s.%s", name, extension);
+                            sprintf(newFilename, "files/%s.%s", name, extension);
+                        }
+                        break;
+                    }
                 }
                 file_no++;
             }
